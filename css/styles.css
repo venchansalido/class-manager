@@ -305,17 +305,25 @@ a { color: inherit; }
   margin-bottom: 6px;
 }
 
-.field input {
+.field input,
+.field select,
+.field textarea {
   width: 100%;
   padding: 11px 13px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-ink);
+  font-family: inherit;
+  font-size: 0.95rem;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.field input:focus {
+.field textarea { resize: vertical; }
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
   outline: none;
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px var(--color-primary-soft);
@@ -826,3 +834,378 @@ a { color: inherit; }
 }
 
 .photo-upload__remove:hover { text-decoration: underline; }
+
+/* ============================================================================
+   Attendance
+   ========================================================================== */
+
+.sync-indicator {
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  white-space: nowrap;
+  align-self: center;
+  transition: color 0.15s ease;
+}
+
+.sync-indicator--error { color: var(--status-absent); font-weight: 600; }
+
+.attendance-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-bottom: 18px;
+}
+
+.attendance-toolbar__field {
+  margin-bottom: 0;
+  min-width: 160px;
+  flex: 1 1 160px;
+}
+
+.attendance-toolbar .btn {
+  margin-bottom: 0;
+}
+
+.date-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.date-nav input[type="date"] {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: inherit;
+}
+
+.attendance-summary {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+  margin-bottom: 12px;
+}
+
+.attendance-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.attendance-row {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.attendance-row__student {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1 1 160px;
+}
+
+.attendance-row__name {
+  font-size: 0.94rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attendance-row__controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.status-btn-group {
+  display: flex;
+  gap: 6px;
+}
+
+.status-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-muted);
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: transform 0.1s ease, background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.status-btn:hover { transform: translateY(-1px); }
+
+.status-btn--active.status-btn--present { background: var(--status-present-bg); border-color: var(--status-present); color: var(--status-present); }
+.status-btn--active.status-btn--absent  { background: var(--status-absent-bg);  border-color: var(--status-absent);  color: var(--status-absent); }
+.status-btn--active.status-btn--late    { background: var(--status-late-bg);    border-color: var(--status-late);    color: var(--status-late); }
+.status-btn--active.status-btn--excused { background: var(--status-excused-bg); border-color: var(--status-excused); color: var(--status-excused); }
+
+.note-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-muted);
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.note-btn--filled {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+  color: var(--color-primary-dark);
+}
+
+@media (max-width: 480px) {
+  .attendance-row { padding: 10px 12px; }
+  .status-btn, .note-btn { width: 30px; height: 30px; }
+}
+
+/* ============================================================================
+   History — view toggle + month nav label
+   ========================================================================== */
+
+.view-toggle {
+  display: flex;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  align-self: flex-end;
+  height: 42px;
+}
+
+.view-toggle__btn {
+  border: none;
+  background: var(--color-surface);
+  color: var(--color-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.view-toggle__btn--active {
+  background: var(--color-primary);
+  color: #FBF7EA;
+}
+
+.month-nav-label {
+  flex: 1;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-primary-dark);
+  white-space: nowrap;
+}
+
+/* ============================================================================
+   Calendar grid
+   ========================================================================== */
+
+.history-body { min-height: 120px; }
+
+.calendar {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 14px;
+}
+
+.calendar__weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.calendar__weekdays div {
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.calendar__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+
+.calendar-cell {
+  min-height: 68px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 3px;
+  padding: 6px 6px;
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  position: relative;
+}
+
+.calendar-cell:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(34, 48, 31, 0.1);
+}
+
+.calendar-cell:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.calendar-cell--empty {
+  border: none;
+  background: transparent;
+}
+
+.calendar-cell--today { border-color: var(--color-accent); border-width: 2px; }
+
+.calendar-cell__date {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--color-ink);
+}
+
+.calendar-cell__badge {
+  font-size: 0.66rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 20px;
+  line-height: 1.4;
+}
+
+.calendar-cell__badge--absent { background: var(--status-absent-bg); color: var(--status-absent); }
+.calendar-cell__badge--late   { background: var(--status-late-bg);   color: var(--status-late); }
+.calendar-cell__badge--ok     { background: var(--status-present-bg);color: var(--status-present); }
+
+.calendar-cell__count {
+  font-size: 0.62rem;
+  color: var(--color-muted);
+  margin-top: auto;
+}
+
+/* Section-view day health tint */
+.calendar-cell--absent { background: var(--status-absent-bg); }
+.calendar-cell--late   { background: var(--status-late-bg); }
+.calendar-cell--ok     { background: var(--status-present-bg); }
+
+/* Student-view: whole cell colored by that day's status */
+.calendar-cell--student-present { background: var(--status-present-bg); border-color: var(--status-present); }
+.calendar-cell--student-absent  { background: var(--status-absent-bg);  border-color: var(--status-absent); }
+.calendar-cell--student-late    { background: var(--status-late-bg);    border-color: var(--status-late); }
+.calendar-cell--student-excused { background: var(--status-excused-bg); border-color: var(--status-excused); }
+
+.calendar-cell__letter {
+  font-weight: 700;
+  font-size: 0.78rem;
+  align-self: center;
+  margin: auto 0;
+}
+
+.calendar-cell__note-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-accent);
+}
+
+.calendar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 14px;
+  font-size: 0.8rem;
+  color: var(--color-muted);
+}
+
+.calendar-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.legend-dot--absent { background: var(--status-absent-bg); border: 1.5px solid var(--status-absent); }
+.legend-dot--late   { background: var(--status-late-bg);   border: 1.5px solid var(--status-late); }
+.legend-dot--ok     { background: var(--status-present-bg);border: 1.5px solid var(--status-present); }
+.legend-dot--none   { background: var(--color-bg);         border: 1.5px solid var(--color-border); }
+
+.legend-dot--present-solid { background: var(--status-present); }
+.legend-dot--absent-solid  { background: var(--status-absent); }
+.legend-dot--late-solid    { background: var(--status-late); }
+.legend-dot--excused-solid { background: var(--status-excused); }
+
+/* ============================================================================
+   Day-detail modal list (reuses .attendance-row look, no avatar)
+   ========================================================================== */
+
+.day-detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+/* ============================================================================
+   Student calendar header (in the "Student calendar" tab)
+   ========================================================================== */
+
+.student-calendar-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.student-calendar-header__avatar {
+  width: 52px;
+  height: 52px;
+  font-size: 1.1rem;
+}
+
+@media (max-width: 480px) {
+  .calendar-cell { min-height: 54px; padding: 4px; }
+  .calendar-cell__date { font-size: 0.78rem; }
+  .calendar-cell__badge { font-size: 0.58rem; padding: 1px 4px; }
+  .calendar-cell__count { display: none; }
+  .view-toggle { align-self: stretch; }
+}

@@ -13,6 +13,8 @@ import { registerRoute, startRouter, navigate, currentRouteName } from './router
 import { renderAuth, signOut } from './auth.js';
 import { renderSections } from './sections.js';
 import { renderStudents } from './students.js';
+import { renderAttendance } from './attendance.js';
+import { renderHistory } from './history.js';
 
 const PUBLIC_ROUTES = new Set(['auth']);
 
@@ -35,8 +37,8 @@ registerRoute('auth', async (mount) => {
 
 registerRoute('sections', (mount) => renderAppShell(mount, 'sections', renderSections));
 registerRoute('students', (mount, params) => renderAppShell(mount, 'sections', renderStudents, params));
-registerRoute('attendance', (mount) => renderAppShell(mount, 'attendance', renderComingSoon('Attendance')));
-registerRoute('history', (mount) => renderAppShell(mount, 'history', renderComingSoon('History')));
+registerRoute('attendance', (mount, params) => renderAppShell(mount, 'attendance', renderAttendance, params));
+registerRoute('history', (mount, params) => renderAppShell(mount, 'history', renderHistory, params));
 
 registerRoute('not-found', (mount) => {
   mount.innerHTML = `<div class="empty-state"><h3>Page not found</h3><p>That view doesn't exist yet.</p></div>`;
@@ -86,17 +88,6 @@ function renderAppShell(mount, activeRoute, renderContent, params) {
 
   const contentMount = mount.querySelector('#app-main');
   return renderContent(contentMount, params);
-}
-
-function renderComingSoon(label) {
-  return (mount) => {
-    mount.innerHTML = `
-      <div class="empty-state">
-        <h3>${label}</h3>
-        <p>This view is built in a later step.</p>
-      </div>
-    `;
-  };
 }
 
 // ---------------------------------------------------------------------------

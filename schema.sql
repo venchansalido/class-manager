@@ -175,7 +175,19 @@ create policy "student_photos_delete_own"
   );
 
 -- ============================================================================
--- 5. MANUAL DASHBOARD STEP (cannot be done via SQL) — do this once:
---    Authentication → Providers → Email → turn OFF "Confirm email"
---    This keeps sign-up frictionless (no email verification step).
+-- 5. MANUAL DASHBOARD STEPS (cannot be done via SQL) — do these once:
+--
+--    a) Authentication → Providers → Email → turn ON "Confirm email"
+--       (sign-up now requires a 6-digit code before the account is usable)
+--
+--    b) Authentication → Email Templates → "Confirm signup" → edit the body
+--       to show {{ .Token }}, e.g.:
+--       "Your Roll Call confirmation code is {{ .Token }}"
+--
+--    c) Authentication → Email Templates → "Reset Password" → same edit:
+--       "Your Roll Call password reset code is {{ .Token }}"
+--
+--    Without (a), sign-up returns a session immediately and no OTP screen
+--    appears. Without (b)/(c), the emails still send, but show a clickable
+--    link instead of a 6-digit code for the person to type in the app.
 -- ============================================================================
