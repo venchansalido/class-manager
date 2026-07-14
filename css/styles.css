@@ -172,9 +172,10 @@ a { color: inherit; }
   display: none;
   background: var(--color-primary);
   color: #F4EFDF;
-  padding: 56px;
+  padding: 64px 56px;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: center;
+  gap: 52px;
   position: relative;
   overflow: hidden;
 }
@@ -183,32 +184,85 @@ a { color: inherit; }
   .auth-brand { display: flex; }
 }
 
+@media (min-height: 760px) {
+  .auth-brand { padding: 64px 64px; }
+}
+
+/* Faint ruled-paper texture, echoing the ledger-sheet idea behind the copy */
+.auth-brand::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent 46px,
+    rgba(244, 239, 223, 0.05) 46px,
+    rgba(244, 239, 223, 0.05) 47px
+  );
+}
+
+/* Oversized checkmark watermark — the same mark used in the ledger rows,
+   blown up as the panel's one decorative signature so the middle of a tall
+   viewport reads as designed space, not empty space. */
+.auth-brand::after {
+  content: '\2713';
+  position: absolute;
+  right: -36px;
+  bottom: -70px;
+  font-family: var(--font-display);
+  font-size: 380px;
+  line-height: 1;
+  color: rgba(200, 155, 60, 0.08);
+  transform: rotate(-6deg);
+}
+
+.auth-brand > * {
+  position: relative;
+  z-index: 1;
+}
+
 .auth-brand__mark {
   font-family: var(--font-display);
-  font-size: 1.4rem;
+  font-size: 1.65rem;
   letter-spacing: 0.02em;
 }
 
 .auth-brand__title {
-  font-size: clamp(2.2rem, 4vw, 3rem);
-  line-height: 1.08;
+  margin-top: 22px;
+  font-size: clamp(2.6rem, 5vw, 3.6rem);
+  line-height: 1.06;
   color: #FBF7EA;
   max-width: 12ch;
 }
 
 .auth-brand__tagline {
-  margin-top: 14px;
-  font-size: 0.95rem;
-  line-height: 1.5;
+  margin-top: 18px;
+  font-size: 1.1rem;
+  line-height: 1.55;
   color: rgba(244, 239, 223, 0.7);
-  max-width: 30ch;
+  max-width: 32ch;
+}
+
+.auth-brand__eyebrow {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  margin-bottom: 16px;
 }
 
 .auth-brand__ledger {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-top: 40px;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(244, 239, 223, 0.12);
+  border-radius: var(--radius-lg);
+  padding: 22px 24px;
 }
 
 .auth-brand__row {
@@ -217,9 +271,14 @@ a { color: inherit; }
   gap: 12px;
   font-family: var(--font-mono);
   font-size: 0.85rem;
-  color: rgba(244, 239, 223, 0.72);
-  border-bottom: 1px dashed rgba(244, 239, 223, 0.18);
-  padding-bottom: 10px;
+  color: rgba(244, 239, 223, 0.78);
+  border-bottom: 1px dashed rgba(244, 239, 223, 0.16);
+  padding-bottom: 12px;
+}
+
+.auth-brand__row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
 .auth-brand__row span:first-child {
@@ -235,6 +294,8 @@ a { color: inherit; }
 }
 
 .auth-brand__foot {
+  display: block;
+  margin-top: 18px;
   font-size: 0.8rem;
   color: rgba(244, 239, 223, 0.5);
 }

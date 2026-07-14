@@ -58,10 +58,11 @@ export function renderAuth(mount) {
       <aside class="auth-brand">
         <div>
           <div class="auth-brand__mark">Roll Call</div>
-          <h1 class="auth-brand__title" style="margin-top:28px;">Attendance,<br/>kept simply.</h1>
+          <h1 class="auth-brand__title">Attendance,<br/>kept simply.</h1>
           <p class="auth-brand__tagline">One tap to mark a student, one glance to see who's missing.</p>
         </div>
         <div>
+          <span class="auth-brand__eyebrow">What you get</span>
           <div class="auth-brand__ledger">
             ${LEDGER_ROWS.map(row => `
               <div class="auth-brand__row">
@@ -70,7 +71,7 @@ export function renderAuth(mount) {
               </div>
             `).join('')}
           </div>
-          <p class="auth-brand__foot" style="margin-top:24px;">Built for one teacher, six sections, every student.</p>
+          <span class="auth-brand__foot">Built for one teacher, six sections, every student.</span>
         </div>
       </aside>
 
