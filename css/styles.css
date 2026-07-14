@@ -196,6 +196,14 @@ a { color: inherit; }
   max-width: 12ch;
 }
 
+.auth-brand__tagline {
+  margin-top: 14px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: rgba(244, 239, 223, 0.7);
+  max-width: 30ch;
+}
+
 .auth-brand__ledger {
   display: flex;
   flex-direction: column;
@@ -336,6 +344,42 @@ a { color: inherit; }
   min-height: 1em;
 }
 
+.field-helper {
+  display: block;
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  margin-top: 5px;
+}
+
+.password-field {
+  position: relative;
+}
+
+.password-field input {
+  padding-right: 42px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  color: var(--color-muted);
+}
+
+.password-toggle:hover {
+  color: var(--color-primary-dark);
+  background: var(--color-bg-deep);
+}
+
 .btn {
   display: inline-flex;
   align-items: center;
@@ -424,6 +468,12 @@ a { color: inherit; }
   font-family: var(--font-display);
   font-weight: 600;
   color: var(--color-primary-dark);
+}
+
+.app-topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .app-nav {

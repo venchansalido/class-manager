@@ -81,6 +81,21 @@ export async function renderAttendance(mount, params) {
         </div>
       </div>
 
+      <div class="field attendance-toolbar__field">
+        <label for="student-search">Search students</label>
+        <input type="text" id="student-search" placeholder="Search by name…" autocomplete="off" />
+      </div>
+
+      <div class="field attendance-toolbar__field">
+        <label for="sort-select">Sort by</label>
+        <select id="sort-select">
+          <option value="name-asc">Name (A–Z)</option>
+          <option value="name-desc">Name (Z–A)</option>
+          <option value="status">Status</option>
+          <option value="unmarked-first">Unmarked first</option>
+        </select>
+      </div>
+
       <button class="btn btn-ghost" id="today-btn" style="width:auto;">Today</button>
       <button class="btn btn-primary" id="mark-all-present-btn" style="width:auto;">Mark all present</button>
     </div>
@@ -89,6 +104,10 @@ export async function renderAttendance(mount, params) {
       <div class="empty-state"><p>Loading students…</p></div>
     </div>
   `;
+
+  const state = { records: new Map(), inFlight: 0, allStudents: [], signedUrlMap: {}, filterText: '', sortBy: 'name-asc' };
+  const syncIndicator = mount.querySelector('#sync-indicator');
+  const body = mount.querySelector('#attendance-body');
 
   mount.querySelector('#section-select').addEventListener('change', (e) => {
     navigate(`attendance?section=${e.target.value}&date=${date}`);
@@ -105,10 +124,14 @@ export async function renderAttendance(mount, params) {
   mount.querySelector('#today-btn').addEventListener('click', () => {
     navigate(`attendance?section=${sectionId}&date=${todayStr()}`);
   });
-
-  const state = { records: new Map(), inFlight: 0 };
-  const syncIndicator = mount.querySelector('#sync-indicator');
-  const body = mount.querySelector('#attendance-body');
+  mount.querySelector('#student-search').addEventListener('input', (e) => {
+    state.filterText = e.target.value;
+    renderFilteredRows(state, body, syncIndicator, sectionId, date);
+  });
+  mount.querySelector('#sort-select').addEventListener('change', (e) => {
+    state.sortBy = e.target.value;
+    renderFilteredRows(state, body, syncIndicator, sectionId, date);
+  });
 
   mount.querySelector('#mark-all-present-btn').addEventListener('click', () => markAllPresent(sectionId, date, state, body, syncIndicator));
 
@@ -160,14 +183,72 @@ async function loadAndRenderBody(sectionId, date, state, body, syncIndicator) {
   const photoPaths = students.filter((s) => s.photo_url).map((s) => s.photo_url);
   const signedUrlMap = await getSignedUrls(photoPaths);
 
-  renderRows(students, signedUrlMap, state, body, syncIndicator, sectionId, date);
+  state.allStudents = students;
+  state.signedUrlMap = signedUrlMap;
+
+  renderFilteredRows(state, body, syncIndicator, sectionId, date);
 }
 
-function renderRows(students, signedUrlMap, state, body, syncIndicator, sectionId, date) {
+// ---------------------------------------------------------------------------
+// Search + sort (client-side — the roster for a section/date is already
+// loaded in state.allStudents, so filtering/sorting never re-hits the network)
+// ---------------------------------------------------------------------------
+
+function filterStudents(students, filterText) {
+  const q = filterText.trim().toLowerCase();
+  if (!q) return students;
+  return students.filter((s) => s.name.toLowerCase().includes(q));
+}
+
+const STATUS_SORT_ORDER = { present: 0, late: 1, excused: 2, absent: 3 };
+
+function sortStudents(students, sortBy, records) {
+  const arr = [...students];
+  if (sortBy === 'name-desc') {
+    arr.sort((a, b) => b.name.localeCompare(a.name));
+  } else if (sortBy === 'status') {
+    arr.sort((a, b) => {
+      const statusA = records.get(a.id)?.status;
+      const statusB = records.get(b.id)?.status;
+      const rankA = statusA ? STATUS_SORT_ORDER[statusA] ?? 4 : 5;
+      const rankB = statusB ? STATUS_SORT_ORDER[statusB] ?? 4 : 5;
+      return rankA !== rankB ? rankA - rankB : a.name.localeCompare(b.name);
+    });
+  } else if (sortBy === 'unmarked-first') {
+    arr.sort((a, b) => {
+      const markedA = records.has(a.id) ? 1 : 0;
+      const markedB = records.has(b.id) ? 1 : 0;
+      return markedA !== markedB ? markedA - markedB : a.name.localeCompare(b.name);
+    });
+  } else {
+    arr.sort((a, b) => a.name.localeCompare(b.name));
+  }
+  return arr;
+}
+
+function renderFilteredRows(state, body, syncIndicator, sectionId, date) {
+  const filtered = filterStudents(state.allStudents, state.filterText);
+  const sorted = sortStudents(filtered, state.sortBy, state.records);
+
+  if (sorted.length === 0) {
+    body.innerHTML = `
+      <div class="empty-state">
+        <h3>No students match "${escapeHtml(state.filterText)}"</h3>
+        <p>Try a different name or clear the search box.</p>
+      </div>
+    `;
+    return;
+  }
+
+  renderRows(sorted, state.signedUrlMap, state, body, syncIndicator, sectionId, date, state.allStudents.length);
+}
+
+function renderRows(students, signedUrlMap, state, body, syncIndicator, sectionId, date, totalAll) {
   const presentCount = [...state.records.values()].filter((r) => r.status === 'present').length;
+  const showingNote = students.length !== totalAll ? ` &middot; showing ${students.length} of ${totalAll}` : '';
 
   body.innerHTML = `
-    <p class="attendance-summary">${state.records.size} of ${students.length} marked &middot; ${presentCount} present</p>
+    <p class="attendance-summary">${state.records.size} of ${totalAll} marked &middot; ${presentCount} present${showingNote}</p>
     <div class="attendance-list">
       ${students.map((s) => rowHtml(s, state.records.get(s.id), signedUrlMap[s.photo_url])).join('')}
     </div>
@@ -181,13 +262,13 @@ function renderRows(students, signedUrlMap, state, body, syncIndicator, sectionI
       btn.addEventListener('click', () => {
         const status = btn.getAttribute('data-status');
         saveRecord(student.id, sectionId, date, { status }, state, row, syncIndicator, () => {
-          updateSummary(body, students.length, state);
+          updateSummary(body, totalAll, state);
         });
       });
     });
 
     row.querySelector('[data-note-btn]')?.addEventListener('click', () => {
-      openNoteModal(student, state, sectionId, date, row, syncIndicator, body, students.length);
+      openNoteModal(student, state, sectionId, date, row, syncIndicator, body, totalAll);
     });
   });
 }
@@ -312,7 +393,7 @@ async function markAllPresent(sectionId, date, state, body, syncIndicator) {
       const studentId = row.getAttribute('data-row');
       reflectRowState(row, state.records.get(studentId));
     });
-    updateSummary(body, rows.length, state);
+    updateSummary(body, state.allStudents.length, state);
 
     showToast('Everyone marked present.', 'success');
     endSync(state, syncIndicator, null);

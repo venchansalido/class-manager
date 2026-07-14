@@ -10,7 +10,7 @@
 
 import { supabase } from './supabaseClient.js';
 import { registerRoute, startRouter, navigate, currentRouteName } from './router.js';
-import { renderAuth, signOut } from './auth.js';
+import { renderAuth, signOut, openChangePasswordModal } from './auth.js';
 import { renderSections } from './sections.js';
 import { renderStudents } from './students.js';
 import { renderAttendance } from './attendance.js';
@@ -23,6 +23,8 @@ const NAV_ITEMS = [
   { route: 'attendance', label: 'Attendance', icon: '&#10003;' },
   { route: 'history',    label: 'History',    icon: '&#128337;' },
 ];
+
+const KEY_ICON = '&#128273;';
 
 let currentSession = null;
 
@@ -53,7 +55,10 @@ function renderAppShell(mount, activeRoute, renderContent, params) {
     <div class="app-shell">
       <header class="app-topbar">
         <span class="app-topbar__mark">Roll Call</span>
-        <button class="btn btn-ghost" id="logout-btn-mobile" style="padding:6px 12px;font-size:0.82rem;">Log out</button>
+        <div class="app-topbar__actions">
+          <button class="icon-btn" id="change-password-btn-mobile" aria-label="Change password" title="Change password">${KEY_ICON}</button>
+          <button class="btn btn-ghost" id="logout-btn-mobile" style="padding:6px 12px;font-size:0.82rem;">Log out</button>
+        </div>
       </header>
 
       <nav class="app-nav">
@@ -64,6 +69,9 @@ function renderAppShell(mount, activeRoute, renderContent, params) {
           </button>
         `).join('')}
         <div class="app-nav__spacer"></div>
+        <button class="app-nav__item" id="change-password-btn-desktop">
+          <span aria-hidden="true">${KEY_ICON}</span> Change password
+        </button>
         <button class="app-nav__item" id="logout-btn-desktop">&#8592; Log out</button>
       </nav>
 
@@ -85,6 +93,8 @@ function renderAppShell(mount, activeRoute, renderContent, params) {
   });
   mount.querySelector('#logout-btn-desktop')?.addEventListener('click', signOut);
   mount.querySelector('#logout-btn-mobile')?.addEventListener('click', signOut);
+  mount.querySelector('#change-password-btn-desktop')?.addEventListener('click', openChangePasswordModal);
+  mount.querySelector('#change-password-btn-mobile')?.addEventListener('click', openChangePasswordModal);
 
   const contentMount = mount.querySelector('#app-main');
   return renderContent(contentMount, params);
