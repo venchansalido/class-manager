@@ -14,6 +14,7 @@ import { supabase, STORAGE_BUCKET } from './supabaseClient.js';
 import { navigate } from './router.js';
 import { showToast } from './toast.js';
 import { openModal, closeModal } from './modal.js';
+import { exportGradebookExcel } from './export.js';
 
 const CATEGORIES = [
   { key: 'quiz',      label: 'Quiz' },
@@ -111,6 +112,7 @@ async function renderAssessmentsList(mount, sections, sectionId) {
         </select>
       </div>
       <button class="btn btn-ghost" id="edit-weights-btn" style="width:auto;">&#9878; Weights</button>
+      <button class="btn btn-ghost" id="export-gradebook-btn" style="width:auto;">&#8681; Export .xlsx</button>
       <button class="btn btn-primary" id="add-assessment-btn" style="width:auto;">+ Add assessment</button>
     </div>
 
@@ -125,6 +127,10 @@ async function renderAssessmentsList(mount, sections, sectionId) {
   });
   mount.querySelector('#add-assessment-btn').addEventListener('click', () => openAssessmentForm(mount, sectionId));
   mount.querySelector('#edit-weights-btn').addEventListener('click', () => openWeightsForm(mount, sectionId));
+  mount.querySelector('#export-gradebook-btn').addEventListener('click', (e) => {
+    const sectionName = sections.find((s) => s.id === sectionId)?.name || '';
+    exportGradebookExcel(sectionId, sectionName, e.currentTarget);
+  });
 
   await loadAndRenderAssessments(mount, sectionId);
 }
@@ -513,6 +519,7 @@ async function renderSummary(mount, sections, sectionId) {
         </select>
       </div>
       <button class="btn btn-ghost" id="edit-weights-btn" style="width:auto;">&#9878; Weights</button>
+      <button class="btn btn-ghost" id="export-gradebook-btn" style="width:auto;">&#8681; Export .xlsx</button>
     </div>
 
     <div id="summary-body" class="summary-body">
@@ -526,6 +533,10 @@ async function renderSummary(mount, sections, sectionId) {
   });
   mount.querySelector('#edit-weights-btn').addEventListener('click', () => {
     openWeightsForm(mount, sectionId, () => loadAndRenderSummary(mount, sectionId));
+  });
+  mount.querySelector('#export-gradebook-btn').addEventListener('click', (e) => {
+    const sectionName = sections.find((s) => s.id === sectionId)?.name || '';
+    exportGradebookExcel(sectionId, sectionName, e.currentTarget);
   });
 
   await loadAndRenderSummary(mount, sectionId);
