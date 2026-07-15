@@ -15,12 +15,14 @@ import { renderSections } from './sections.js';
 import { renderStudents } from './students.js';
 import { renderAttendance } from './attendance.js';
 import { renderHistory } from './history.js';
+import { renderGrades } from './grades.js';
 
 const PUBLIC_ROUTES = new Set(['auth']);
 
 const NAV_ITEMS = [
   { route: 'sections',   label: 'Sections',   icon: '&#9636;' },
   { route: 'attendance', label: 'Attendance', icon: '&#10003;' },
+  { route: 'grades',     label: 'Grades',     icon: '&#128202;' },
   { route: 'history',    label: 'History',    icon: '&#128337;' },
 ];
 
@@ -40,6 +42,7 @@ registerRoute('auth', async (mount) => {
 registerRoute('sections', (mount) => renderAppShell(mount, 'sections', renderSections));
 registerRoute('students', (mount, params) => renderAppShell(mount, 'sections', renderStudents, params));
 registerRoute('attendance', (mount, params) => renderAppShell(mount, 'attendance', renderAttendance, params));
+registerRoute('grades', (mount, params) => renderAppShell(mount, 'grades', renderGrades, params));
 registerRoute('history', (mount, params) => renderAppShell(mount, 'history', renderHistory, params));
 
 registerRoute('not-found', (mount) => {
