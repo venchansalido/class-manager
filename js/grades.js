@@ -60,7 +60,32 @@ export async function renderGrades(mount, params) {
   if (params?.assessment) {
     return renderScoreSheet(mount, sections, sectionId, params.assessment);
   }
+  if (params?.view === 'summary') {
+    return renderSummary(mount, sections, sectionId);
+  }
   return renderAssessmentsList(mount, sections, sectionId);
+}
+
+// ---------------------------------------------------------------------------
+// Assessments / Summary tabs (shared header control)
+// ---------------------------------------------------------------------------
+
+function gradesTabsHtml(activeTab) {
+  return `
+    <div class="grades-tabs" role="tablist">
+      <button class="grades-tab" data-grades-tab="assessments" role="tab" aria-selected="${activeTab === 'assessments'}">Assessments</button>
+      <button class="grades-tab" data-grades-tab="summary" role="tab" aria-selected="${activeTab === 'summary'}">Summary</button>
+    </div>
+  `;
+}
+
+function wireGradesTabs(mount, sectionId) {
+  mount.querySelectorAll('[data-grades-tab]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const tab = btn.getAttribute('data-grades-tab');
+      navigate(tab === 'summary' ? `grades?section=${sectionId}&view=summary` : `grades?section=${sectionId}`);
+    });
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -75,6 +100,8 @@ async function renderAssessmentsList(mount, sections, sectionId) {
         <p class="view-header__sub">Assessments for this section. Click one to open its score sheet.</p>
       </div>
     </div>
+
+    ${gradesTabsHtml('assessments')}
 
     <div class="attendance-toolbar">
       <div class="field attendance-toolbar__field">
@@ -92,6 +119,7 @@ async function renderAssessmentsList(mount, sections, sectionId) {
     </div>
   `;
 
+  wireGradesTabs(mount, sectionId);
   mount.querySelector('#grades-section-select').addEventListener('change', (e) => {
     navigate(`grades?section=${e.target.value}`);
   });
@@ -327,7 +355,7 @@ function confirmDeleteAssessment(mount, sectionId, assessment, onDeleted) {
 
 const WEIGHT_TOTAL_TOLERANCE = 0.01;
 
-async function openWeightsForm(mount, sectionId) {
+async function openWeightsForm(mount, sectionId, onSaved) {
   const triggerBtn = mount.querySelector('#edit-weights-btn');
   const originalLabel = triggerBtn ? triggerBtn.innerHTML : '';
   if (triggerBtn) {
@@ -452,6 +480,7 @@ async function openWeightsForm(mount, sectionId) {
 
       showToast('Weights saved.', 'success');
       closeModal();
+      if (typeof onSaved === 'function') await onSaved();
     } catch (err) {
       totalError.textContent = err.message || 'Something went wrong. Please try again.';
     } finally {
@@ -459,6 +488,202 @@ async function openWeightsForm(mount, sectionId) {
       submitBtn.textContent = 'Save weights';
     }
   });
+}
+
+// ---------------------------------------------------------------------------
+// Summary (weighted averages)
+// ---------------------------------------------------------------------------
+
+async function renderSummary(mount, sections, sectionId) {
+  mount.innerHTML = `
+    <div class="view-header">
+      <div>
+        <h2>Grades</h2>
+        <p class="view-header__sub">Weighted running average per student for this section.</p>
+      </div>
+    </div>
+
+    ${gradesTabsHtml('summary')}
+
+    <div class="attendance-toolbar">
+      <div class="field attendance-toolbar__field">
+        <label for="grades-section-select">Section</label>
+        <select id="grades-section-select">
+          ${sections.map((s) => `<option value="${s.id}" ${s.id === sectionId ? 'selected' : ''}>${escapeHtml(s.name)}</option>`).join('')}
+        </select>
+      </div>
+      <button class="btn btn-ghost" id="edit-weights-btn" style="width:auto;">&#9878; Weights</button>
+    </div>
+
+    <div id="summary-body" class="summary-body">
+      <div class="empty-state"><p>Loading summary…</p></div>
+    </div>
+  `;
+
+  wireGradesTabs(mount, sectionId);
+  mount.querySelector('#grades-section-select').addEventListener('change', (e) => {
+    navigate(`grades?section=${e.target.value}&view=summary`);
+  });
+  mount.querySelector('#edit-weights-btn').addEventListener('click', () => {
+    openWeightsForm(mount, sectionId, () => loadAndRenderSummary(mount, sectionId));
+  });
+
+  await loadAndRenderSummary(mount, sectionId);
+}
+
+async function loadAndRenderSummary(mount, sectionId) {
+  const body = mount.querySelector('#summary-body');
+  body.innerHTML = `<div class="empty-state"><p>Loading summary…</p></div>`;
+
+  const [
+    { data: students, error: studentsError },
+    { data: assessments, error: assessmentsError },
+    { data: weightRows, error: weightsError },
+  ] = await Promise.all([
+    supabase.from('students').select('id, name, photo_url').eq('section_id', sectionId).order('name', { ascending: true }),
+    supabase.from('assessments').select('id, category, max_score').eq('section_id', sectionId),
+    supabase.from('category_weights').select('category, weight').eq('section_id', sectionId),
+  ]);
+
+  if (studentsError || assessmentsError || weightsError) {
+    const err = studentsError || assessmentsError || weightsError;
+    body.innerHTML = `<div class="empty-state"><h3>Couldn't load summary</h3><p>${escapeHtml(err.message)}</p></div>`;
+    return;
+  }
+
+  if (!students || students.length === 0) {
+    body.innerHTML = `
+      <div class="empty-state">
+        <h3>No students in this section yet</h3>
+        <p>Add students to this section before viewing grade summaries.</p>
+      </div>
+    `;
+    return;
+  }
+
+  let scoresByAssessment = new Map();
+  if (assessments && assessments.length > 0) {
+    const assessmentIds = assessments.map((a) => a.id);
+    const { data: scores, error: scoresError } = await supabase
+      .from('scores')
+      .select('assessment_id, student_id, score')
+      .in('assessment_id', assessmentIds);
+
+    if (scoresError) {
+      body.innerHTML = `<div class="empty-state"><h3>Couldn't load scores</h3><p>${escapeHtml(scoresError.message)}</p></div>`;
+      return;
+    }
+
+    (scores || []).forEach((s) => {
+      if (!scoresByAssessment.has(s.assessment_id)) scoresByAssessment.set(s.assessment_id, new Map());
+      scoresByAssessment.get(s.assessment_id).set(s.student_id, s.score);
+    });
+  }
+
+  const assessmentsByCategory = new Map();
+  (assessments || []).forEach((a) => {
+    if (!assessmentsByCategory.has(a.category)) assessmentsByCategory.set(a.category, []);
+    assessmentsByCategory.get(a.category).push(a);
+  });
+
+  const weightMap = new Map((weightRows || []).map((w) => [w.category, w.weight]));
+  const usingDefaultWeights = weightMap.size === 0;
+  const defaultWeight = 100 / CATEGORIES.length;
+
+  const photoPaths = students.filter((s) => s.photo_url).map((s) => s.photo_url);
+  const signedUrlMap = await getSignedUrls(photoPaths);
+
+  const studentRows = students.map((student) => {
+    const breakdown = CATEGORIES.map((c) => {
+      const catAssessments = assessmentsByCategory.get(c.key) || [];
+      let sumPct = 0;
+      let count = 0;
+      catAssessments.forEach((a) => {
+        const score = scoresByAssessment.get(a.id)?.get(student.id);
+        if (score != null) {
+          sumPct += (score / a.max_score) * 100;
+          count += 1;
+        }
+      });
+      return {
+        key: c.key,
+        label: c.label,
+        weight: usingDefaultWeights ? defaultWeight : (weightMap.get(c.key) ?? 0),
+        avg: count > 0 ? sumPct / count : null,
+        count,
+        total: catAssessments.length,
+      };
+    });
+
+    const graded = breakdown.filter((b) => b.avg != null);
+    const weightSum = graded.reduce((sum, b) => sum + b.weight, 0);
+    const overall = weightSum > 0
+      ? graded.reduce((sum, b) => sum + b.avg * b.weight, 0) / weightSum
+      : null;
+
+    return { student, breakdown, overall };
+  });
+
+  const graded = studentRows.filter((r) => r.overall != null);
+  const classAvg = graded.length > 0
+    ? graded.reduce((sum, r) => sum + r.overall, 0) / graded.length
+    : null;
+  let highest = null;
+  let lowest = null;
+  graded.forEach((r) => {
+    if (!highest || r.overall > highest.overall) highest = r;
+    if (!lowest || r.overall < lowest.overall) lowest = r;
+  });
+
+  body.innerHTML = `
+    ${usingDefaultWeights ? `
+      <p class="field-helper summary-weights-note">
+        No custom weights saved yet — using an even split across categories. Use the Weights button to set your own.
+      </p>
+    ` : ''}
+    <div class="summary-class-line">
+      ${classAvg != null
+        ? `Class average: <strong>${formatNumber(classAvg)}%</strong>
+           &middot; Highest: <strong>${escapeHtml(highest.student.name)}</strong> (${formatNumber(highest.overall)}%)
+           &middot; Lowest: <strong>${escapeHtml(lowest.student.name)}</strong> (${formatNumber(lowest.overall)}%)`
+        : 'No grades recorded yet for this section.'}
+    </div>
+    <div class="summary-list">
+      ${studentRows.map((r) => summaryCardHtml(r, signedUrlMap[r.student.photo_url])).join('')}
+    </div>
+  `;
+}
+
+function summaryCardHtml(row, signedUrl) {
+  const { student, breakdown, overall } = row;
+  const avatarInner = signedUrl
+    ? `<img src="${signedUrl}" alt="" />`
+    : `<span>${escapeHtml(getInitials(student.name))}</span>`;
+  const overallDisplay = overall != null ? `${formatNumber(overall)}%` : '\u2014';
+
+  return `
+    <details class="summary-card">
+      <summary class="summary-card__header">
+        <div class="attendance-row__student">
+          <div class="avatar${signedUrl ? '' : ' avatar--placeholder'}">${avatarInner}</div>
+          <span class="attendance-row__name">${escapeHtml(student.name)}</span>
+        </div>
+        <span class="summary-card__average${overall == null ? ' summary-card__average--empty' : ''}">${overallDisplay}</span>
+        <span class="summary-card__chevron" aria-hidden="true">&#9662;</span>
+      </summary>
+      <div class="summary-card__breakdown">
+        ${breakdown.map((b) => `
+          <div class="summary-card__category-row">
+            <span class="summary-card__category-label">${b.label} <span class="summary-card__category-weight">(${formatNumber(b.weight)}%)</span></span>
+            <span class="summary-card__category-value">
+              ${b.avg != null ? `${formatNumber(b.avg)}%` : '\u2014'}
+              <span class="summary-card__category-count">${b.count} of ${b.total} scored</span>
+            </span>
+          </div>
+        `).join('')}
+      </div>
+    </details>
+  `;
 }
 
 // ---------------------------------------------------------------------------

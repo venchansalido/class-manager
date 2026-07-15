@@ -1205,6 +1205,135 @@ a { color: inherit; }
 .weights-total--off { background: var(--status-absent-bg);  color: var(--status-absent); }
 
 /* ============================================================================
+   Grades — Assessments/Summary tabs
+   ========================================================================== */
+
+.grades-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--color-bg-deep);
+  padding: 4px;
+  border-radius: var(--radius-md);
+  margin-bottom: 16px;
+  max-width: 320px;
+}
+
+.grades-tab {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 0.86rem;
+  color: var(--color-muted);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.grades-tab[aria-selected="true"] {
+  background: var(--color-surface);
+  color: var(--color-primary-dark);
+  box-shadow: var(--shadow-card);
+}
+
+/* ============================================================================
+   Grades — Summary view
+   ========================================================================== */
+
+.summary-body { min-height: 120px; }
+
+.summary-weights-note { margin-bottom: 10px; }
+
+.summary-class-line {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  margin-bottom: 14px;
+  font-size: 0.88rem;
+  color: var(--color-muted);
+}
+
+.summary-class-line strong { color: var(--color-primary-dark); }
+
+.summary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.summary-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 4px 16px;
+}
+
+.summary-card[open] { padding-bottom: 12px; }
+
+.summary-card__header {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  cursor: pointer;
+}
+
+.summary-card__header::-webkit-details-marker { display: none; }
+
+.summary-card__average {
+  margin-left: auto;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--color-primary-dark);
+}
+
+.summary-card__average--empty { color: var(--color-muted); font-weight: 500; }
+
+.summary-card__chevron {
+  color: var(--color-muted);
+  transition: transform 0.15s ease;
+  flex-shrink: 0;
+}
+
+.summary-card[open] .summary-card__chevron { transform: rotate(180deg); }
+
+.summary-card__breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--color-border);
+}
+
+.summary-card__category-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.85rem;
+}
+
+.summary-card__category-label { color: var(--color-ink); }
+.summary-card__category-weight { color: var(--color-muted); font-size: 0.78rem; }
+
+.summary-card__category-value {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-weight: 600;
+  color: var(--color-primary-dark);
+  flex-shrink: 0;
+}
+
+.summary-card__category-count {
+  font-weight: 400;
+  color: var(--color-muted);
+  font-size: 0.78rem;
+}
+
+/* ============================================================================
    Grades — score sheet
    ========================================================================== */
 
