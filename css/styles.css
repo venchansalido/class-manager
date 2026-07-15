@@ -1169,6 +1169,42 @@ a { color: inherit; }
 .category-badge--other     { background: var(--color-bg-deep);     color: var(--color-muted); }
 
 /* ============================================================================
+   Grades — weights modal
+   ========================================================================== */
+
+.weight-field { margin-bottom: 12px; }
+
+.weight-input-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.weight-input-group input {
+  width: 100%;
+}
+
+.weight-input-suffix {
+  color: var(--color-muted);
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.weights-total {
+  margin: 14px 0 4px;
+  padding: 10px 13px;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-deep);
+  color: var(--color-muted);
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-align: right;
+}
+
+.weights-total--ok  { background: var(--status-present-bg); color: var(--status-present); }
+.weights-total--off { background: var(--status-absent-bg);  color: var(--status-absent); }
+
+/* ============================================================================
    Grades — score sheet
    ========================================================================== */
 

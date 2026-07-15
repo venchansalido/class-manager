@@ -83,6 +83,7 @@ async function renderAssessmentsList(mount, sections, sectionId) {
           ${sections.map((s) => `<option value="${s.id}" ${s.id === sectionId ? 'selected' : ''}>${escapeHtml(s.name)}</option>`).join('')}
         </select>
       </div>
+      <button class="btn btn-ghost" id="edit-weights-btn" style="width:auto;">&#9878; Weights</button>
       <button class="btn btn-primary" id="add-assessment-btn" style="width:auto;">+ Add assessment</button>
     </div>
 
@@ -95,6 +96,7 @@ async function renderAssessmentsList(mount, sections, sectionId) {
     navigate(`grades?section=${e.target.value}`);
   });
   mount.querySelector('#add-assessment-btn').addEventListener('click', () => openAssessmentForm(mount, sectionId));
+  mount.querySelector('#edit-weights-btn').addEventListener('click', () => openWeightsForm(mount, sectionId));
 
   await loadAndRenderAssessments(mount, sectionId);
 }
@@ -315,6 +317,146 @@ function confirmDeleteAssessment(mount, sectionId, assessment, onDeleted) {
       showToast(err.message || 'Could not delete assessment.', 'error');
       btn.disabled = false;
       btn.textContent = 'Delete';
+    }
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Grade weights (per-section, per-category)
+// ---------------------------------------------------------------------------
+
+const WEIGHT_TOTAL_TOLERANCE = 0.01;
+
+async function openWeightsForm(mount, sectionId) {
+  const triggerBtn = mount.querySelector('#edit-weights-btn');
+  const originalLabel = triggerBtn ? triggerBtn.innerHTML : '';
+  if (triggerBtn) {
+    triggerBtn.disabled = true;
+    triggerBtn.textContent = 'Loading…';
+  }
+
+  const { data: rows, error } = await supabase
+    .from('category_weights')
+    .select('category, weight')
+    .eq('section_id', sectionId);
+
+  if (triggerBtn) {
+    triggerBtn.disabled = false;
+    triggerBtn.innerHTML = originalLabel;
+  }
+
+  if (error) {
+    showToast(error.message || 'Could not load weights.', 'error');
+    return;
+  }
+
+  const existing = {};
+  (rows || []).forEach((r) => { existing[r.category] = r.weight; });
+  const defaultWeight = parseFloat((100 / CATEGORIES.length).toFixed(2));
+  const hasExisting = (rows || []).length > 0;
+
+  const overlay = openModal({
+    title: 'Grade weights',
+    bodyHtml: `
+      <form id="weights-form">
+        <p class="field-helper" style="margin-bottom:16px;">
+          How much each category counts toward a student's final grade for this section.
+          Must add up to 100%.${hasExisting ? '' : ' Starting with an even split — adjust as needed.'}
+        </p>
+        ${CATEGORIES.map((c) => `
+          <div class="field weight-field">
+            <label for="weight-${c.key}">${c.label}</label>
+            <div class="weight-input-group">
+              <input type="number" id="weight-${c.key}" data-weight-input="${c.key}" min="0" max="100" step="any"
+                value="${formatNumber(existing[c.key] != null ? existing[c.key] : defaultWeight)}" required />
+              <span class="weight-input-suffix">%</span>
+            </div>
+          </div>
+        `).join('')}
+        <div class="weights-total" id="weights-total">
+          Total: <span id="weights-total-value">100</span>%
+        </div>
+        <div class="field-error" id="weights-total-error"></div>
+        <button type="submit" class="btn btn-primary" id="weights-submit-btn">Save weights</button>
+      </form>
+    `,
+  });
+
+  const form = overlay.querySelector('#weights-form');
+  const totalError = overlay.querySelector('#weights-total-error');
+  const totalEl = overlay.querySelector('#weights-total');
+  const totalValueEl = overlay.querySelector('#weights-total-value');
+  const inputs = CATEGORIES.map((c) => overlay.querySelector(`[data-weight-input="${c.key}"]`));
+
+  function refreshTotal() {
+    const total = inputs.reduce((sum, inp) => sum + (parseFloat(inp.value) || 0), 0);
+    totalValueEl.textContent = formatNumber(total);
+    const isValid = Math.abs(total - 100) <= WEIGHT_TOTAL_TOLERANCE;
+    totalEl.classList.toggle('weights-total--ok', isValid);
+    totalEl.classList.toggle('weights-total--off', !isValid);
+  }
+
+  inputs.forEach((inp) => {
+    inp.addEventListener('input', () => {
+      inp.classList.remove('score-input--invalid');
+      totalError.textContent = '';
+      refreshTotal();
+    });
+  });
+  refreshTotal();
+  inputs[0].focus();
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    totalError.textContent = '';
+    inputs.forEach((inp) => inp.classList.remove('score-input--invalid'));
+
+    const values = inputs.map((inp) => parseFloat(inp.value));
+    let hasError = false;
+    values.forEach((v, i) => {
+      if (!Number.isFinite(v) || v < 0 || v > 100) {
+        inputs[i].classList.add('score-input--invalid');
+        hasError = true;
+      }
+    });
+    if (hasError) {
+      totalError.textContent = 'Enter a value between 0 and 100 for each category.';
+      return;
+    }
+
+    const total = values.reduce((sum, v) => sum + v, 0);
+    if (Math.abs(total - 100) > WEIGHT_TOTAL_TOLERANCE) {
+      totalError.textContent = `Weights must add up to 100% (currently ${formatNumber(total)}%).`;
+      return;
+    }
+
+    const submitBtn = overlay.querySelector('#weights-submit-btn');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Saving…';
+
+    try {
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+
+      const payload = CATEGORIES.map((c, i) => ({
+        user_id: userData.user.id,
+        section_id: sectionId,
+        category: c.key,
+        weight: values[i],
+      }));
+
+      const { error: saveError } = await supabase
+        .from('category_weights')
+        .upsert(payload, { onConflict: 'section_id,category' });
+      if (saveError) throw saveError;
+
+      showToast('Weights saved.', 'success');
+      closeModal();
+    } catch (err) {
+      totalError.textContent = err.message || 'Something went wrong. Please try again.';
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Save weights';
     }
   });
 }

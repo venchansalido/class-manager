@@ -37,6 +37,45 @@ create table if not exists public.attendance_records (
   unique (student_id, date)
 );
 
+-- An assessment is one gradable item for a section: a quiz, exam, summative
+-- task, or activity. Teacher creates as many as she wants, per section.
+create table if not exists public.assessments (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references auth.users(id) on delete cascade,
+  section_id  uuid not null references public.sections(id) on delete cascade,
+  title       text not null,
+  category    text not null default 'other'
+              check (category in ('quiz', 'exam', 'summative', 'activity', 'other')),
+  max_score   numeric not null check (max_score > 0),
+  date        date not null default current_date,
+  created_at  timestamptz not null default now()
+);
+
+-- One score per student per assessment.
+create table if not exists public.scores (
+  id             uuid primary key default gen_random_uuid(),
+  user_id        uuid not null references auth.users(id) on delete cascade,
+  assessment_id  uuid not null references public.assessments(id) on delete cascade,
+  student_id     uuid not null references public.students(id) on delete cascade,
+  score          numeric not null check (score >= 0),
+  created_at     timestamptz not null default now(),
+  unique (assessment_id, student_id)
+);
+
+-- category_weights — per-section weight (%) assigned to each assessment
+-- category. Categories with no row here fall back to an equal-split default
+-- shown client-side (js/grades.js) until the teacher saves their own scheme.
+create table if not exists public.category_weights (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references auth.users(id) on delete cascade,
+  section_id  uuid not null references public.sections(id) on delete cascade,
+  category    text not null check (category in ('quiz', 'exam', 'summative', 'activity', 'other')),
+  weight      numeric(5,2) not null default 0 check (weight >= 0 and weight <= 100),
+  created_at  timestamptz not null default now(),
+  -- one weight row per category per section — upsert on (section_id, category)
+  unique (section_id, category)
+);
+
 -- ----------------------------------------------------------------------------
 -- 2. INDEXES
 -- ----------------------------------------------------------------------------
@@ -48,6 +87,11 @@ create index if not exists idx_attendance_user_id           on public.attendance
 create index if not exists idx_attendance_student_id        on public.attendance_records (student_id);
 create index if not exists idx_attendance_date              on public.attendance_records (date);
 create index if not exists idx_attendance_student_date      on public.attendance_records (student_id, date);
+create index if not exists idx_assessments_section_id       on public.assessments (section_id);
+create index if not exists idx_scores_assessment_id         on public.scores (assessment_id);
+create index if not exists idx_scores_student_id            on public.scores (student_id);
+create index if not exists idx_category_weights_user_id     on public.category_weights (user_id);
+create index if not exists idx_category_weights_section_id  on public.category_weights (section_id);
 
 -- ----------------------------------------------------------------------------
 -- 3. ROW LEVEL SECURITY — enable + policies
@@ -57,6 +101,9 @@ create index if not exists idx_attendance_student_date      on public.attendance
 alter table public.sections            enable row level security;
 alter table public.students            enable row level security;
 alter table public.attendance_records  enable row level security;
+alter table public.assessments         enable row level security;
+alter table public.scores              enable row level security;
+alter table public.category_weights    enable row level security;
 
 -- sections -------------------------------------------------------------------
 drop policy if exists "sections_select_own" on public.sections;
@@ -122,6 +169,44 @@ create policy "attendance_update_own"
 drop policy if exists "attendance_delete_own" on public.attendance_records;
 create policy "attendance_delete_own"
   on public.attendance_records for delete
+  using (auth.uid() = user_id);
+
+-- assessments ------------------------------------------------------------------
+-- NOTE: applied in Supabase as a single "for all" policy rather than four
+-- separate select/insert/update/delete policies (functionally equivalent).
+drop policy if exists "Users manage their own assessments" on public.assessments;
+create policy "Users manage their own assessments"
+  on public.assessments for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+-- scores -------------------------------------------------------------------
+drop policy if exists "Users manage their own scores" on public.scores;
+create policy "Users manage their own scores"
+  on public.scores for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+-- category_weights -----------------------------------------------------------
+drop policy if exists "category_weights_select_own" on public.category_weights;
+create policy "category_weights_select_own"
+  on public.category_weights for select
+  using (auth.uid() = user_id);
+
+drop policy if exists "category_weights_insert_own" on public.category_weights;
+create policy "category_weights_insert_own"
+  on public.category_weights for insert
+  with check (auth.uid() = user_id);
+
+drop policy if exists "category_weights_update_own" on public.category_weights;
+create policy "category_weights_update_own"
+  on public.category_weights for update
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+drop policy if exists "category_weights_delete_own" on public.category_weights;
+create policy "category_weights_delete_own"
+  on public.category_weights for delete
   using (auth.uid() = user_id);
 
 -- ----------------------------------------------------------------------------
